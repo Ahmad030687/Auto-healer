@@ -6,7 +6,7 @@ const app = express();
 app.use(express.json());
 
 // --- AAPKI SETTINGS ---
-const GITHUB_TOKEN = "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";
+const GITHUB_TOKEN = process.env.G_TOKEN;
 const GROQ_API_KEY = "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";
 const REPO_OWNer = "Ahmad030687"; 
 const REPO_NAME = "Nnn";

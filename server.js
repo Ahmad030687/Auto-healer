@@ -13,71 +13,87 @@ const REPO_NAME = "Nnn";
 
 const octokit = new Octokit({ auth: GITHUB_TOKEN });
 
-app.get('/', (req, res) => res.send("AI Full-Bot Scanner is LIVE! 🔍🚑"));
+app.get('/', (req, res) => res.send("Master Surgeon Bot B is Online! 🏥🚑"));
 
 app.post('/fix-it', async (req, res) => {
     const { error, filename, code } = req.body;
-    
-    // Sirf file ka naam nikalna (e.g., jail.js)
-    const pureFileName = filename.split('/').pop();
-    console.log(`[SCANNER] Searching for ${pureFileName} in the whole bot...`);
+    console.log(`[ALERT] Surgery requested for: ${filename}`);
 
     try {
-        // 1. POORA BOT SCAN KARNA (Search API)
-        // Ye search karega ke ye file 'Nnn' repo mein kahan chhupi hai
-        const { data: searchResults } = await octokit.search.code({
-            q: `filename:${pureFileName} repo:${REPO_OWNER}/${REPO_NAME}`
-        });
-
-        let finalPath = filename; // Default path
-        if (searchResults.total_count > 0) {
-            // Agar file mil gayi (e.g. Priyansh/commands/jail.js), toh uska rasta pakar lo
-            finalPath = searchResults.items[0].path;
-            console.log(`[FOUND] File located at: ${finalPath}`);
-        } else {
-            console.log(`[WARNING] File not found in search, using provided path: ${finalPath}`);
-        }
-
-        // 2. AI SURGERY
-        console.log(`[AI] Analyzing and fixing: ${finalPath}`);
+        // 1. AI Analysis - AI ko batana ke ye har kism ka error theek kare
+        console.log(`[AI] Fixing code with Llama-3...`);
         const aiRes = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
             model: "llama-3.3-70b-versatile",
             messages: [{
                 role: "system",
-                content: "You are an expert Node.js developer. Fix the provided code. Ensure all used libraries (canvas, axios, fs) are properly required at the top. Return ONLY raw code without any explanations or markdown backticks."
+                content: "You are a Master Node.js Developer. Fix any error in the code (API death, syntax, logic). If an API is dead, replace it with a working alternative if possible. Return ONLY raw code. No talk, no backticks."
             }, {
                 role: "user",
-                content: `Error: ${error}\n\nFile Path: ${finalPath}\n\nOriginal Code:\n${code}`
+                content: `Error: ${error}\n\nFile: ${filename}\n\nCode:\n${code}`
             }]
         }, { headers: { Authorization: `Bearer ${GROQ_API_KEY}` } });
 
         let fixedCode = aiRes.data.choices[0].message.content.replace(/```javascript|```/g, "").trim();
 
-        // 3. GET FILE SHA (GitHub update ke liye zaroori hai)
-        const { data: fileData } = await octokit.repos.getContent({
-            owner: REPO_OWNer,
-            repo: REPO_NAME,
-            path: finalPath
-        });
+        // 2. GitHub Path Verification
+        let finalPath = filename;
+        try {
+            // Check agar file wahan mojood hai
+            const { data: fileData } = await octokit.repos.getContent({
+                owner: REPO_OWNER,
+                repo: REPO_NAME,
+                path: finalPath
+            });
 
-        // 4. PUSH FIXED CODE TO GITHUB
-        await octokit.repos.createOrUpdateFileContents({
-            owner: REPO_OWNer,
-            repo: REPO_NAME,
-            path: finalPath,
-            message: `🤖 AI Auto-Fix: Resolved crash in ${pureFileName}`,
-            content: Buffer.from(fixedCode).toString('base64'),
-            sha: fileData.sha
-        });
+            // 3. Update File
+            await octokit.repos.createOrUpdateFileContents({
+                owner: REPO_OWNER,
+                repo: REPO_NAME,
+                path: finalPath,
+                message: `🤖 God-Mode Fix: ${error.substring(0, 30)}`,
+                content: Buffer.from(fixedCode).toString('base64'),
+                sha: fileData.sha
+            });
 
-        console.log(`✅ GitHub Updated! ${pureFileName} is now fixed at ${finalPath}`);
-        res.status(200).send("Surgery Successful!");
+            console.log(`✅ Surgery Successful: ${finalPath} is fixed!`);
+            res.status(200).send("Fixed!");
+
+        } catch (pathErr) {
+            // Agar rasta nahi milta toh search karein (Detective Mode)
+            console.log("[SEARCHING] Path not found, looking for file...");
+            const pureName = filename.split('/').pop();
+            const { data: search } = await octokit.search.code({
+                q: `filename:${pureName} repo:${REPO_OWNER}/${REPO_NAME}`
+            });
+
+            if (search.total_count > 0) {
+                const newPath = search.items[0].path;
+                const { data: newData } = await octokit.repos.getContent({
+                    owner: REPO_OWNER,
+                    repo: REPO_NAME,
+                    path: newPath
+                });
+
+                await octokit.repos.createOrUpdateFileContents({
+                    owner: REPO_OWNER,
+                    repo: REPO_NAME,
+                    path: newPath,
+                    message: `🤖 Auto-Detective Fix: ${pureName}`,
+                    content: Buffer.from(fixedCode).toString('base64'),
+                    sha: newData.sha
+                });
+                console.log(`✅ Fixed after search: ${newPath}`);
+                res.status(200).send("Fixed via search!");
+            } else {
+                throw new Error("File not found anywhere in repo.");
+            }
+        }
 
     } catch (err) {
         console.error("❌ Surgery Failed:", err.message);
-        res.status(500).send("Scanner error: " + err.message);
+        res.status(500).send(err.message);
     }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Full-Bot Surgeon ready on port ${PORT}`));
+app.listen(PORT, () => console.log(`Surgeon is ready on port ${PORT}`));

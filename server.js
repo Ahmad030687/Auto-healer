@@ -7,7 +7,7 @@ app.use(express.json());
 
 // --- CONFIGURATION ---
 const GITHUB_TOKEN = process.env.G_TOKEN;
-const GROQ_API_KEY = "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";
+const GROQ_API_KEY = "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";
 const REPO_OWNER = "Ahmad030687"; 
 const REPO_NAME = "Nnn";
 
